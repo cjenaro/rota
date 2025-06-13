@@ -1,3 +1,4 @@
+rockspec_format = "3.0"
 package = "rota"
 version = "0.0.1-1"
 
