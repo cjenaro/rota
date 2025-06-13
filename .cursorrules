@@ -1,0 +1,68 @@
+# Rota - Router & Middleware Chain 🛣️
+
+You are working on **Rota**, the routing and middleware system of the Foguete framework.
+
+## Package Purpose
+Rota provides URL routing, middleware chain execution, and request dispatching.
+
+## Key Responsibilities
+- URL pattern matching and parameter extraction
+- HTTP method routing (GET, POST, PUT, DELETE, etc.)
+- Middleware chain execution
+- Route parameter parsing and validation
+- RESTful route conventions
+- Route group/namespace support
+
+## Core APIs
+- `router:get(path, handler)` - Define GET route
+- `router:post(path, handler)` - Define POST route
+- `router:put(path, handler)` - Define PUT route
+- `router:delete(path, handler)` - Define DELETE route
+- `router:use(middleware)` - Add middleware to chain
+- `router:group(prefix, callback)` - Group routes under prefix
+- `router:match(method, path)` - Find matching route
+
+## Routing Patterns
+- Static routes: `/users`
+- Parameter routes: `/users/:id`
+- Wildcard routes: `/files/*path`
+- Regex routes: `/users/([0-9]+)`
+
+## Middleware Pattern
+```lua
+local function auth_middleware(request, response, next)
+    if not request.headers.authorization then
+        return { status = 401, body = "Unauthorized" }
+    end
+    return next()
+end
+
+router:use(auth_middleware)
+```
+
+## Architecture Guidelines
+- Use efficient trie-based route matching
+- Support route parameter constraints
+- Implement proper middleware error handling
+- Allow middleware to modify request/response
+- Support async middleware with coroutines
+
+## RESTful Conventions
+```lua
+router:get("/users", controllers.users.index)
+router:get("/users/:id", controllers.users.show)
+router:post("/users", controllers.users.create)
+router:put("/users/:id", controllers.users.update)
+router:delete("/users/:id", controllers.users.destroy)
+```
+
+## Testing Requirements
+- Test route matching accuracy
+- Verify parameter extraction
+- Test middleware execution order
+- Benchmark route lookup performance
+- Test error handling in middleware chain
+
+## Dependencies
+- Pure Lua implementation
+- No external routing libraries 
