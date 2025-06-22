@@ -26,7 +26,7 @@ dependencies = {
 build = {
    type = "builtin",
    modules = {
-      ["foguete.rota"] = "src/init.lua"
+      ["rota"] = "src/init.lua"
    }
 }
 
