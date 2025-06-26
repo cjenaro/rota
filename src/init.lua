@@ -139,7 +139,9 @@ function Router:resources(name, controller)
         self:get(base_path, controller.index)
     end
     
-    if controller.new then
+    if controller.new_action then
+        self:get(base_path .. "/new", controller.new_action)
+    elseif controller.new then
         self:get(base_path .. "/new", controller.new)
     end
     
