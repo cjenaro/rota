@@ -11,11 +11,13 @@ local Router = {}
 Router.__index = Router
 
 -- Create a new router instance
-function rota.new()
+function rota.new(options)
+	options = options or {}
 	local router = setmetatable({
 		routes = {},
 		middleware = {},
 		groups = {},
+		hot_reload_mode = options.hot_reload_mode or false,
 	}, Router)
 
 	return router
@@ -28,6 +30,18 @@ function Router:use(middleware)
 	end
 
 	table.insert(self.middleware, middleware)
+	return self
+end
+
+-- Enable hot reload mode for development
+function Router:enable_hot_reload()
+	self.hot_reload_mode = true
+	return self
+end
+
+-- Disable hot reload mode
+function Router:disable_hot_reload()
+	self.hot_reload_mode = false
 	return self
 end
 
@@ -128,8 +142,9 @@ function Router:resources(name, controller)
 		error("Resource name must be a string")
 	end
 
-	if type(controller) ~= "table" then
-		error("Controller must be a table")
+	-- Support both controller table/function and module path string
+	if type(controller) ~= "table" and type(controller) ~= "function" and type(controller) ~= "string" then
+		error("Controller must be a table, function, or module path string")
 	end
 
 	local base_path = "/" .. name
@@ -137,39 +152,76 @@ function Router:resources(name, controller)
 	-- Helper function to create controller instance and call method
 	local function create_handler(method_name)
 		return function(request, next)
-			local instance = controller:new(request)
-			return instance[method_name](instance)
+			local controller_class
+
+			if type(controller) == "string" then
+				-- Module path string - handle caching based on hot reload mode
+				if self.hot_reload_mode then
+					-- In hot reload mode, require fresh each time
+					controller_class = require(controller)
+				else
+					-- In production mode, cache the controller
+					if not self._controller_cache then
+						self._controller_cache = {}
+					end
+					if not self._controller_cache[controller] then
+						self._controller_cache[controller] = require(controller)
+					end
+					controller_class = self._controller_cache[controller]
+				end
+			elseif type(controller) == "function" then
+				-- Factory function - call it to get fresh controller
+				controller_class = controller()
+			else
+				-- Direct controller table
+				controller_class = controller
+			end
+
+			local controller_instance = controller_class:new(request)
+			return controller_instance[method_name](controller_instance)
 		end
 	end
 
+	-- Get controller class to check available methods
+	local controller_class
+	if type(controller) == "string" then
+		-- For module path, require it to check methods
+		controller_class = require(controller)
+	elseif type(controller) == "function" then
+		-- If it's a factory function, call it to get the controller class
+		controller_class = controller()
+	else
+		controller_class = controller
+	end
+
 	-- Standard REST routes
-	if controller.index then
+	if controller_class.index then
 		self:get(base_path, create_handler("index"))
 	end
 
-	if controller.new_action then
+	if controller_class.new_action then
 		self:get(base_path .. "/new", create_handler("new_action"))
-	elseif controller.new then
+	elseif controller_class.new then
 		self:get(base_path .. "/new", create_handler("new"))
 	end
 
-	if controller.create then
+	if controller_class.create then
 		self:post(base_path, create_handler("create"))
 	end
 
-	if controller.show then
+	if controller_class.show then
 		self:get(base_path .. "/:id", create_handler("show"))
 	end
 
-	if controller.edit then
+	if controller_class.edit then
 		self:get(base_path .. "/:id/edit", create_handler("edit"))
 	end
 
-	if controller.update then
+	if controller_class.update then
 		self:put(base_path .. "/:id", create_handler("update"))
 	end
 
-	if controller.destroy then
+	if controller_class.destroy then
 		self:delete(base_path .. "/:id", create_handler("destroy"))
 	end
 
